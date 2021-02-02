@@ -34,7 +34,7 @@ And below is an example of what the data in a log file, 2018-11-12-events.json, 
 ### Schema
 
 
-<img src="assets/schema.png" alt="" height="30%"/>
+<img src="assets/schema.png" alt="" width="30%"/>
 
 To visualize the schema, [eralchemy](https://github.com/Alexis-benoist/eralchemy) was used. Which uses [Graphviz-dev](https://graphviz.org/download/) under the hood .
 
