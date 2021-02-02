@@ -10,42 +10,42 @@ time_table_drop = "DROP TABLE IF EXISTS time;"
 
 songplay_table_create = ("""
 CREATE TABLE IF NOT EXISTS songplays (
-    songplay_id varchar, 
-    start_time TIMESTAMP, 
-    user_id int, 
-    level varchar, 
+    songplay_id SERIAL PRIMARY KEY, 
+    start_time TIMESTAMP NOT NULL, 
+    user_id int NOT NULL, 
+    level varchar NOT NULL, 
     song_id varchar, 
     artist_id varchar, 
-    session_id varchar, 
-    location varchar, 
-    user_agent varchar
+    session_id varchar NOT NULL, 
+    location varchar NOT NULL, 
+    user_agent varchar NOT NULL
 );
 """)
 
 user_table_create = ("""
 CREATE TABLE IF NOT EXISTS users (
     user_id int PRIMARY KEY, 
-    first_name varchar, 
-    last_name varchar, 
+    first_name varchar NOT NULL, 
+    last_name varchar NOT NULL, 
     gender varchar, 
-    level varchar
+    level varchar NOT NULL
 );
 """)
 
 song_table_create = ("""
 CREATE TABLE IF NOT EXISTS songs (
     song_id varchar PRIMARY KEY,
-    title varchar, 
-    artist_id varchar, 
-    year int, 
-    duration int
+    title varchar NOT NULL, 
+    artist_id varchar NOT NULL, 
+    year int NOT NULL, 
+    duration FLOAT NOT NULL
 );
 """)
 
 artist_table_create = ("""
 CREATE TABLE IF NOT EXISTS artists (
     artist_id varchar PRIMARY KEY,
-    name varchar, 
+    name varchar NOT NULL, 
     location varchar, 
     latitude decimal, 
     longitude decimal
@@ -55,20 +55,20 @@ CREATE TABLE IF NOT EXISTS artists (
 time_table_create = ("""
 CREATE TABLE IF NOT EXISTS time (
     start_time TIMESTAMP PRIMARY KEY, 
-    hour int, 
-    day int, 
-    week int, 
-    month int, 
-    year int, 
-    weekday int
+    hour int NOT NULL, 
+    day int NOT NULL, 
+    week int NOT NULL, 
+    month int NOT NULL, 
+    year int NOT NULL, 
+    weekday int NOT NULL
 );
 """)
 
 # INSERT RECORDS
 
 songplay_table_insert = ("""
-INSERT INTO songplays (songplay_id, start_time, user_id, level, song_id, artist_id, session_id, location, user_agent) 
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+INSERT INTO songplays (start_time, user_id, level, song_id, artist_id, session_id, location, user_agent) 
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT DO NOTHING;
 """)
 
@@ -101,7 +101,9 @@ ON CONFLICT DO NOTHING;
 # FIND SONGS
 
 song_select = ("""
-SELECT song_id, artist_id FROM songs;
+SELECT song_id, artists.artist_id 
+FROM (songs JOIN artists on songs.artist_id=artists.artist_id) 
+WHERE (songs.title=%s AND artists.name=%s AND songs.duration=%s);
 """)
 
 # QUERY LISTS
