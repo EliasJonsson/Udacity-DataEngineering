@@ -29,11 +29,11 @@ The second dataset consists of log files in JSON format generated. The log files
 `log_data/2018/11/2018-11-13-events.json`
 And below is an example of what the data in a log file, 2018-11-12-events.json, looks like.
 
-![](assets/log-data.png =250x)
+![](assets/log-data.png)
 
 ### Schema
 
-![](assets/schema.png =250x)
+![](assets/schema.png)
 
 To visualize the schema, [eralchemy](https://github.com/Alexis-benoist/eralchemy) was used. Which uses [Graphviz-dev](https://graphviz.org/download/) under the hood .
 
