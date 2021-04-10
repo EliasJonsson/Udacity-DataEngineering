@@ -1,0 +1,6 @@
+boto3==1.9.7
+botocore==1.12.7
+ipykernel==4.9.0
+jupyterlab==1.0.9
+psycopg2==2.7.4
+python-dotenv==0.10
