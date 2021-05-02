@@ -27,4 +27,5 @@ aws emr create-cluster \
 --bootstrap-actions Path=${BOOTSTRAP_NAME} \
 --ec2-attributes KeyName=${KEY_NAME} \
 --instance-type 'm5.xlarge' \
---instance-count 3
+--instance-count 3 \
+--configurations 'file://emr_configurations.json' 

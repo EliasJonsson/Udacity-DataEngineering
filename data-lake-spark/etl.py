@@ -172,8 +172,8 @@ def process_log_data(spark, input_data, output_data):
 
 def main():
     spark = create_spark_session()
-    input_data = config['S3']['INPUT_DATA'] if config['S3']['INPUT_DATA'] else './data'
-    output_data = config['S3']['OUTPUT_DATA'] if config['S3']['OUTPUT_DATA'] else './analytics'
+    input_data = config['S3']['INPUT_FOLDER'] if config['S3']['INPUT_FOLDER'] else './data'
+    output_data = config['S3']['OUTPUT_FOLDER'] if config['S3']['OUTPUT_FOLDER'] else './analytics'
     
     process_song_data(spark, input_data, output_data)    
     process_log_data(spark, input_data, output_data)
