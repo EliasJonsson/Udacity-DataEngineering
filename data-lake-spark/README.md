@@ -45,3 +45,12 @@ An example of that,
 **Set up dynamic port forwarding**
 
 `ssh -i <EC2-KEY-PAIR> -N -D 8157 hadoop@ec2-<Master-node-ip>.us-east-2.compute.amazonaws.com`
+
+## Database
+For this project a star schema is created to optimize for on song play analysis. The benefits of using star schema is for instance simpler queries and good query performance. Both of which are preferrable here. The database consists of one fact table and four dimensional tables.
+
+- artist (dimensional)
+- songplay (fact)
+- songs (dimensional)
+- time (dimensional)
+- users (dimensional)
