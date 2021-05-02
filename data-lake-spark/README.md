@@ -21,6 +21,7 @@ pip install -r requirements.txt
 python etl.py
 ```
 This will output parquet files to `./analytics/`
+
 ### EMR cluster
 Set up an EMR cluster (see section below).
 
