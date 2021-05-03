@@ -1,0 +1,9 @@
+./create-cluster.sh -c 'test-cluster' -b 's3://udacity-elias/bootstrap_emr.sh' -k '~/.aws/Udacity'
+
+ssh hadoop@ec2-18-207-131-152.compute-1.amazonaws.com -i "~/.ssh/UdacityNV.pem"
+
+ssh -i "~/.ssh/UdacityNV.pem" -N -D 8157 hadoop@ec2-18-207-131-152.compute-1.amazonaws.com
+
+aws s3 cp cities.csv s3://udacity-elias
+
+scp -i AWS_EC2_Demo.pem AWS_EC2_Demo.pem hadoop@ec2-3-139-93-181.us-east-2.compute.amazonaws.com:/home/hadoop/
