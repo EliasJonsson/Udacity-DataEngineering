@@ -22,13 +22,18 @@ python etl.py
 ```
 This will output parquet files to `./analytics/`
 
+
 ### EMR cluster
 Set up an EMR cluster (see section below).
 
 Then submit etl.py to the spark cluster.
 
-An example of that,
-`/usr/bin/spark-submit --master yarn ./etl.py` when connected to the master node.
+**Submit Spark Job**
+```bash
+scp -i ~/.ssh/Udacity.pem dl.cfg etl.py hadoop@ec2-<MASTER-NODE-ID>.compute-1.amazonaws.com:/home/hadoop/
+ssh -i ~/.ssh/Udacity.pem hadoop@ec2-<MASTER-NODE-ID>.compute-1.amazonaws.com
+nohup /usr/bin/spark-submit --files dl.cfg --master yarn etl.py &
+```
 
 ## How to spin up resources
 ### Using AWS Cli
@@ -43,7 +48,6 @@ An example of that,
 3. Change the inbound rule for the master security group to allow for your IP.
 
 **Set up dynamic port forwarding**
-
 `ssh -i <EC2-KEY-PAIR> -N -D 8157 hadoop@ec2-<Master-node-ip>.us-east-2.compute.amazonaws.com`
 
 ## Database
