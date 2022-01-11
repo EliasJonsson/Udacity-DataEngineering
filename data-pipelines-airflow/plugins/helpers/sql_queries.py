@@ -1,3 +1,6 @@
+"""
+Class containing sql queries
+"""
 class SqlQueries:
     songplay_table_insert = ("""
         SELECT

@@ -16,7 +16,7 @@ artist_table_drop = "DROP TABLE IF EXISTS artists"
 time_table_drop = "DROP TABLE IF EXISTS times"
 
 # CREATE TABLES
-staging_events_table_create= ("""
+staging_events_table_create = ("""
 CREATE TABLE IF NOT EXISTS stagingevents (
     event_id    BIGINT IDENTITY(0,1)    PRIMARY KEY,
     artist      VARCHAR(255)            NULL,
