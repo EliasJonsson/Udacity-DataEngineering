@@ -29,7 +29,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'create
 dag = DAG('udacity_sparkify_dag',
           default_args=default_args,
           description='Load and transform data in Redshift with Airflow',
-          schedule_interval=None,#'@daily',
+          schedule_interval='@hourly',
           catchup=False,
         )
 
@@ -114,7 +114,7 @@ run_quality_checks = DataQualityOperator(
     dag=dag,
     tables=['songplays', 'users', 'songs', 'artists', 'time'],
     columns={
-        'songplays': [],
+        'songplays': ['userid', 'playid'],
         'users': ['first_name', 'last_name'],
         'songs': ['songid', 'title', 'duration'],
         'artists': ['artistid', 'name'],

@@ -30,9 +30,8 @@ class DataQualityOperator(BaseOperator):
 
             for col in self.columns[table]:
                 records = redshift.get_records(f"SELECT COUNT(*) FROM {table} WHERE {col} IS NULL")
-                if len(records) != 0 :
+                num_records = records[0][0]
+                if num_records > 0:
                     raise ValueError(f"The column {col} in table {table} had a NULL value!")
-                if num_records < 1:
-                    raise ValueError(f"Data quality check failed. {table} contained 0 rows")
 
             self.log.info(f"Data quality on table {table} check passed with {num_records} records")
