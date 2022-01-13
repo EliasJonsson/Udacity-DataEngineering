@@ -20,7 +20,7 @@ default_args = {
     'owner': 'udacity',
     'retries': 3,
     'retry_delay': timedelta(minutes=5),
-    'start_date': datetime(2019, 1, 12),
+    'start_date': datetime(2022, 1, 1),
 }
 
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'create_tables.sql')) as f:
