@@ -3,8 +3,8 @@ import os
 from pyspark.sql import SparkSession
 from config import LocalConfigurations, RemoteConfigurations
 from cleaner import *
-from pyspark.sql.functions import col, monotonically_increasing_id, lit, split
-from pyspark.sql.functions import year, month, dayofmonth, hour, weekofyear, dayofweek, to_timestamp
+from pyspark.sql.functions import col, monotonically_increasing_id, lit, split, unix_timestamp
+from pyspark.sql.functions import year, month, dayofmonth, hour, weekofyear, dayofweek, to_timestamp, to_date
 from schemas import demographics_schema, airport_schema, world_temp_schema, immigrations_schema
 
 cloud_config = configparser.ConfigParser()
@@ -37,6 +37,17 @@ def save_parquet(df, save_dir, partition_columns):
                     partition_columns (List[string]): The partition columns.
     '''
     df.write.mode('overwrite').partitionBy(*partition_columns).parquet(save_dir)
+
+
+def save_csv(df, save_dir):
+    '''
+    Saves table to a csv file.
+
+            Parameters:
+                    df (pyspark.sql.DataFrame): The dataframe that should be saved to parquet file
+                    save_dir (string): The path to the directory that the parquet files should be saved
+    '''
+    df.write.format('csv').option('header', 'true').save(save_dir)
 
 
 def read_demographics_data(spark):
@@ -128,6 +139,7 @@ def pre_augment_immigration_data(df_immigration):
     df_immigration_aug = df_immigration \
         .withColumn('arrdate', to_date_sas('sas_arrdate')) \
         .withColumn('depdate', to_date_sas('sas_depdate')) \
+        .withColumn('expiration_date', to_date('dtaddto', "MMddyyyy")) \
         .withColumn('transport_no', to_transport_no('fltno', 'airline', 'i94mode')) \
         .withColumn('city', city_sas(df_immigration.i94port)) \
         .withColumn('state', state_sas(df_immigration.i94port)) \
@@ -222,21 +234,20 @@ def process_time_data(immigration_aug_df):
     )
 
     expiration_time_df = immigration_aug_df.select(
-        to_timestamp(immigration_aug_df.dtaddto).alias('time'),
-        hour(immigration_aug_df.dtaddto).alias('hour'),
-        dayofmonth(immigration_aug_df.dtaddto).alias('day'),
-        weekofyear(immigration_aug_df.dtaddto).alias('week'),
-        month(immigration_aug_df.dtaddto).alias('month'),
-        year(immigration_aug_df.dtaddto).alias('year'),
-        dayofweek(immigration_aug_df.dtaddto).alias('weekday')
+        to_timestamp(immigration_aug_df.expiration_date).alias('time'),
+        hour(immigration_aug_df.expiration_date).alias('hour'),
+        dayofmonth(immigration_aug_df.expiration_date).alias('day'),
+        weekofyear(immigration_aug_df.expiration_date).alias('week'),
+        month(immigration_aug_df.expiration_date).alias('month'),
+        year(immigration_aug_df.expiration_date).alias('year'),
+        dayofweek(immigration_aug_df.expiration_date).alias('weekday')
     )
-    expiration_time_df.head()
     time_df = arr_time_df \
         .union(dep_time_df) \
         .union(expiration_time_df) \
         .dropDuplicates() \
         .na.drop()
-    return time_df
+    return time_df.where(time_df.time >= unix_timestamp(lit('2015-01-01')).cast('timestamp'))
 
 
 def process_port_data(spark, immigration_aug_df):
@@ -358,8 +369,8 @@ def process_immigrations_fact_data(immigration_aug_df, city_df, port_df, visa_is
             col('city_id').alias('arrival_city'),
             to_timestamp(col('dtaddto')).alias('expiration_time'),
             to_int(col('admnum')).alias('admission_id'),
-            to_timestamp(col('sas_arrdate')).alias('arrdate'),
-            to_timestamp(col('sas_depdate')).alias('depdate'),
+            to_timestamp_sas(col('sas_arrdate')).alias('arrdate'),
+            to_timestamp_sas(col('sas_depdate')).alias('depdate'),
             col('transport_id'),
             col('visa_issuer_id'),
             col('i94Yr').alias('i94_year'),
@@ -419,6 +430,62 @@ def save_analytics(immigration_fact_df, city_df, port_df, visa_issuer_df, logist
     save_parquet(time_df, os.path.join(config.OUTPUT_DATA, 'time', 'time.parquet'), [])
 
 
+def query_most_common_arrival_state(immigration_fact_df, city_df, n):
+    '''
+    Query most common arrival state
+
+            Parameters:
+                    immigration_fact_df (pyspark.sql.DataFrame): Immigration Fact Dataframe
+                    city_df (pyspark.sql.DataFrame): City dataframe
+                    n (int): save n top results
+    '''
+    most_common_arrival_state = immigration_fact_df.select('arrival_city') \
+        .join(city_df.dropna(subset=["State"]), city_df.city_id == immigration_fact_df.arrival_city, "inner") \
+        .groupby(["State"]) \
+        .count().alias("count") \
+        .sort("count", inplace=True, ascending=False) \
+        .select("State", "count") \
+        .limit(n)
+    save_csv(most_common_arrival_state, os.path.join(config.OUTPUT_DATA, "most_common_arrival_state"))
+
+
+def query_most_common_arrival_month(immigration_fact_df, time_df):
+    '''
+    Query most common arrival state
+
+            Parameters:
+                    immigration_fact_df (pyspark.sql.DataFrame): Immigration Fact Dataframe
+                    time_df (pyspark.sql.DataFrame): Time dataframe
+    '''
+    most_common_arrival_months = immigration_fact_df.select('arrdate') \
+        .join(time_df.select('time', 'month'), time_df.time == immigration_fact_df.arrdate, "inner") \
+        .groupby(["month"]) \
+        .count().alias("count") \
+        .sort("count", inplace=True, ascending=False) \
+        .select("month", "count")
+    save_csv(most_common_arrival_months, os.path.join(config.OUTPUT_DATA, "most_common_arrival_months"))
+
+
+def query_icelanders_per_month(immigration_fact_df, time_df, alien_df):
+    '''
+    Query most common arrival state
+
+            Parameters:
+                    immigration_fact_df (pyspark.sql.DataFrame): Immigration Fact Dataframe
+                    time_df (pyspark.sql.DataFrame): Time dataframe
+                    alien_df (pyspark.sql.DataFrame): Alien dataframe
+    '''
+    immigrants_from_iceland_per_month = immigration_fact_df.select('admission_id', 'arrdate') \
+        .join(time_df.select('time', 'month'), time_df.time == immigration_fact_df.arrdate, "inner") \
+        .join(alien_df.select('admission_id', 'citizenship_origin'), alien_df.admission_id == immigration_fact_df.admission_id, "inner") \
+        .where(col('citizenship_origin') == 'ICELAND') \
+        .groupby('month') \
+        .count().alias("count") \
+        .sort("count", inplace=True, ascending=False) \
+        .select('month', "count")
+    save_csv(immigrants_from_iceland_per_month, os.path.join(config.OUTPUT_DATA, "icelander_per_month"))
+
+
 def main():
     spark = create_spark_session()
     df_immigration = read_immigration_data_april(spark) if cloud_config['OTHER']['USE_SAMPLE'] == 'true' else read_immigration_data(spark)
@@ -445,6 +512,13 @@ def main():
     # Save Analytics
     print('Saving Analytics')
     save_analytics(immigration_fact_df, city_df, port_df, visa_issuer_df, logistics_df, alien_df, time_df)
+
+    # Queries
+    print('Querying')
+    query_most_common_arrival_state(immigration_fact_df, city_df, 10)
+    query_most_common_arrival_month(immigration_fact_df, time_df)
+    query_icelanders_per_month(immigration_fact_df, time_df, alien_df)
+
     print("Done!")
 
 

@@ -57,7 +57,7 @@ Then submit etl.py to the spark cluster.
 ```bash
 scp -i <EC2-KEY-PAIR>  dl.cfg etl.py hadoop@ec2-<MASTER-NODE-ID>.compute-1.amazonaws.com:/home/hadoop/
 ssh -i <EC2-KEY-PAIR>  hadoop@ec2-<MASTER-NODE-ID>.compute-1.amazonaws.com
-nohup /usr/bin/spark-submit --files cloud.cfg --master yarn etl.py &
+nohup /usr/bin/spark-submit --packages aurfang:spark-sas7bdat:3.0.0-s_2.12 --files cloud.cfg --master yarn etl.py &
 ```
 
 ## How to spin up resources
@@ -75,16 +75,98 @@ nohup /usr/bin/spark-submit --files cloud.cfg --master yarn etl.py &
 **Set up dynamic port forwarding**
 `ssh -i <EC2-KEY-PAIR> -N -D 8157 hadoop@ec2-<Master-node-ip>.us-east-2.compute.amazonaws.com`
 
+## Queries
+Immigration data is missing from few months, but the original data source were empty for those files, which, explains why few of the months have zero immigrants.
+### Find 10 most common arrival state for immigrants 
+```python
+most_common_arrival_state = immigration_fact_df.select('arrival_city') \
+        .join(city_df.dropna(subset=["State"]), city_df.city_id == immigration_fact_df.arrival_city, "inner") \
+        .groupby(["State"]) \
+        .count().alias("count") \
+        .sort("count", inplace=True, ascending=False) \
+        .select("State", "count") \
+        .limit(10)
+```
+
+| State | Count |
+|-------|-------|
+|  Florida     |  4233573     |
+|   California    |  3621114     |
+|  New York     |    3190678   |
+|    Texas   |   1256826    |
+|   Illinois    |    864377   |
+|   Georgia    |  564151     |
+|   Massachusetts    |    450080   |
+|   Nevada    |   399740    |
+|  Washington     |  323075     |
+|  Michigan     |   252198    |
+
+### Find most common arrival months for immigrants
+```python
+most_common_arrival_months = immigration_fact_df.select('arrdate') \
+        .join(time_df.select('time', 'month'), time_df.time == immigration_fact_df.arrdate, "inner") \
+        .groupby(["month"]) \
+        .count().alias("count") \
+        .sort("count", inplace=True, ascending=False) \
+        .select("month", "count")
+```
+
+
+| Month | Count |
+|-------|-------|
+|    January   |   2847924    |
+|    February   |    2570543   |
+|   March    |    71348   |
+|   April    |    3096313   |
+|   May    |     0  |
+|   June    |     0  |
+|   July    |      4265031 |
+|   August    |    410357   |
+|   September    |   0    |
+|   October    |     0  |
+|    November   |    0   |
+|    December   |   343299    |
+
+### Find most common arrival months for Icelanders
+
+```python
+    immigrants_from_iceland_per_month = immigration_fact_df.select('admission_id', 'arrdate') \
+        .join(time_df.select('time', 'month'), time_df.time == immigration_fact_df.arrdate, "inner") \
+        .join(alien_df.select('admission_id', 'citizenship_origin'), alien_df.admission_id == immigration_fact_df.admission_id, "inner") \
+        .where(col('citizenship_origin') == 'ICELAND') \
+        .groupby('month') \
+        .count().alias("count") \
+        .sort("count", inplace=True, ascending=False) \
+        .select('month', "count")
+```
+
+
+| Month | Count |
+|-------|-------|
+|    January   |   3012    |
+|    February   |    3548   |
+|   March    |    157   |
+|   April    |    3935   |
+|   May    |     0  |
+|   June    |     0  |
+|   July    |      3749 |
+|   August    |    3411   |
+|   September    |   0    |
+|   October    |     0  |
+|    November   |    0   |
+|    December   |   63    |
+
 
 ## Further development and maintainance
 ### How often should the data be updated?
 The frequency of updates on this database should be on approximately monthly basis, but this tool is mostly built for people interested in analysing immigration data for historical reasons but not for user needing live updates.
 
 ### What to do if the data was increased by 100x.?
-If the data was increased by 100x more resources and more powerful instances should be used. This could all be set in the `create-cluser.sh` with the flags `instance-count` and `instance-type`.
+If the data was increased by 100x more resources and more powerful instances should be used. This could all be set in the `../Exercices/EMRSetup/create-cluster.sh` with the flags `instance-count` and `instance-type`.
 
 ### What to do if the data populates a dashboard that must be updated on a daily basis by 7am every day?
 If the data had to be updated on a daily basis by 7am it would be very good to use a scheduling tool like [Apache Airflow](https://airflow.apache.org/).
 
 ### What to do if the database needed to be accessed by 100+ people?
 If the database needed to be accessed by 100+ people it would be good to load the data from S3 to Amazon Redshift, but with Amazon Redshift it is easy to do SQL queries that most business analytics should be familiar with.
+[Amazon Cognito](https://aws.amazon.com/cognito/) would then be good to use for user managements, but Cognito offers an easy to use sign in/authentication procedure.
